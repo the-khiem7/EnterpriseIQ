@@ -137,16 +137,21 @@ CREATE INDEX ON chunks USING hnsw (embedding vector_cosine_ops);
 
 ---
 
-## Build phases
+## Build phases (index)
 
-- **P0 — Provision & scaffold:** Aurora PG Serverless v2 (scale-to-zero) via Vercel Marketplace AWS integration; `CREATE EXTENSION vector; CREATE EXTENSION pgrouting;` (both allowlisted — low risk); Next.js app; deploy hello-world to Vercel; wire OIDC/IAM auth.
-- **P1 — DB layer:** migrations for all tables + HNSW index + edge indexes + `edges_pgr` view; connection wrapper; `/api/status` healthcheck.
-- **P2 — Ingest (Connect+Structure):** upload + chunk + extract triples + embed + write entities/edges. Documents page.
-- **P3 — Query (Reason):** hybrid vector + recursive-CTE/pgrouting retrieval + synthesis + audit trail. Ask page.
-- **P4 — Graph Explorer:** read `entities`/`edges` → force-directed viz.
-- **P5 — Learn:** feedback capture + ranking adjustment.
-- **P6 — Harden & deploy:** IAM auth in prod, error states, env config, cold-start warm path for demo.
-- **P7 — Submission assets:** seed demo dataset (the VIP-refund scenario); record <3-min video; draw.io architecture diagram (AWS icons); AWS/Vercel storage screenshot; fill every `docs/devpost/` field; "what we updated" note.
+Phase **titles** only — granular tasks + live status live in
+[`ROADMAP.md`](../../ROADMAP.md), the progress tracker.
+
+- **P0** — Provision & scaffold (Aurora + extensions + Next.js + Vercel + IAM auth)
+- **P1** — Database layer (migrations, indexes, `edges_pgr` view, healthcheck)
+- **P2** — Ingest: Connect + Structure (upload, chunk, extract triples, embed, write graph)
+- **P3** — Query: Reason (vector + recursive-CTE/pgrouting retrieval + synthesis + audit trail)
+- **P4** — Graph Explorer (force-directed viz over `entities`/`edges`)
+- **P5** — Learn (feedback capture + ranking adjustment)
+- **P6** — Harden & deploy (prod IAM, error states, demo warm path)
+- **P7** — Submission assets (dataset, diagram, screenshot, video, fill `docs/devpost/`)
+
+> 📍 **Track and update progress in [`ROADMAP.md`](../../ROADMAP.md).**
 
 ---
 
@@ -166,19 +171,8 @@ CREATE INDEX ON chunks USING hnsw (embedding vector_cosine_ops);
 
 ---
 
-## Submission deliverables (maps to `docs/devpost/`)
+## Submission deliverables
 
-| Requirement | File / field | Status |
-|---|---|---|
-| Track = Open Innovation | `Additional info.md` | ✅ corrected |
-| Database = Amazon Aurora | `Additional info.md` → "Which database" | ☐ select |
-| Live Vercel URL | `Additional info.md` + `Project details.md` | ☐ after deploy |
-| Vercel Team ID (`team_xxxxx`) | `Additional info.md` | ☐ |
-| Architecture diagram (png/pdf) | `Additional info.md` | ☐ build in P7 |
-| AWS DB usage screenshot | `Additional info.md` | ☐ build in P7 |
-| <3-min demo video (public YouTube) | `Project details.md` | ☐ build in P7 |
-| Project name + elevator pitch | `Project overview.md` | ☐ |
-| Project story (inspiration/built/learned/challenges) | `Project details.md` | ☐ |
-| Built-with tags expanded | `Project details.md` | ☐ add next.js, postgresql, pgvector, pgrouting, openai, typescript |
-| "What we updated" (App Status=Existing) | `Additional info.md` | ☐ draft |
-| Bonus content w/ `#H0Hackathon` | optional | ☐ optional (+0.2 each, max +0.6) |
+Tracked in [`ROADMAP.md`](../../ROADMAP.md) → *Submission deliverables (DevPost)*
+and built in phase **P7**. Built-with tags to add: `next.js`, `postgresql`,
+`pgvector`, `pgrouting`, `openai`, `typescript`.

@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+/* ── EnterpriseIQ design tokens ──────────────────────────────────────────────
+   Direction: "Evidence / Blueprint" — archival, precise, traceable.
+   Boldness is spent on the graph/provenance signature; everything else quiet. */
+@theme inline {
+  --color-paper: #eef1f4;
+  --color-surface: #ffffff;
+  --color-ink: #111821;
+  --color-muted: #5d6975;
+  --color-faint: #8a96a2;
+  --color-line: #dbe1e8;
+  --color-signal: #0d7d86; /* deep teal — actions, graph edges */
+  --color-signal-ink: #0a5a61;
+  --color-signal-soft: #d8ecee;
+  --color-prov: #a8530a; /* amber — provenance / audit only */
+  --color-prov-soft: #f6e6d3;
+  --color-danger: #b3261e;
+
+  --font-display: var(--font-grotesk);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jbmono);
+}
+
+:root {
+  --rail-w: 232px;
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* faint blueprint grid — the quiet structural signature */
+  background-image:
+    linear-gradient(to right, rgba(17, 24, 33, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 24, 33, 0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+::selection {
+  background: var(--color-signal-soft);
+}
+
+/* ── Small component layer ──────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  cursor: pointer;
+}
+.btn-primary {
+  background: var(--color-signal);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--color-signal-ink); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-ghost {
+  background: transparent;
+  border-color: var(--color-line);
+  color: var(--color-ink);
+}
+.btn-ghost:hover { background: #fff; }
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+}
+
+.field {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  outline: none;
+}
+.field:focus {
+  border-color: var(--color-signal);
+  box-shadow: 0 0 0 3px var(--color-signal-soft);
+}
+
+/* Mono "chip" — the data vernacular: entity types, ids, predicates */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.26rem 0.45rem;
+  border-radius: 5px;
+  border: 1px solid var(--color-line);
+  color: var(--color-muted);
+  background: #fff;
+  white-space: nowrap;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
