@@ -9,8 +9,8 @@
 > decision log). **Live status lives here.**
 
 **Last updated:** 2026-06-29
-**Current phase:** P6 — **Aurora live + migrated + IAM auth validated.** Remaining: Vercel deploy (user import).
-**Next action:** user imports repo to Vercel + sets env (below) + deploys → I verify `/api/status` on live URL.
+**Current phase:** P6 backend live (Aurora+IAM). P7 in progress — diagram + DevPost text + demo data done.
+**Next action:** user deploys to Vercel (→ live URL + Team ID), records video, exports diagram PNG + screenshots.
 
 ---
 
@@ -96,13 +96,14 @@ Status page (`app/status/page.tsx`); Ask/Graph placeholders. `npm run build` gre
 > `enterpriseiq-subnets` (express manages its own networking — these are orphaned, free).
 > Teardown: `aws rds delete-db-instance --db-instance-identifier enterpriseiq-instance-1 --skip-final-snapshot` then `aws rds delete-db-cluster --db-cluster-identifier enterpriseiq --skip-final-snapshot`.
 
-### P7 — Submission assets  `(status: not started)`
-- [ ] Seed demo dataset (the VIP-refund-policy scenario)
-- [ ] Architecture diagram (draw.io, AWS icons) → `docs/devpost/Additional info.md`
-- [ ] AWS / Vercel storage screenshot proving Aurora usage
-- [ ] `<3-min` demo video, **public** on YouTube → `docs/devpost/Project details.md`
-- [ ] Fill all `docs/devpost/` fields: track, database, live link, Team ID, project name, elevator pitch, story, built-with tags
-- [ ] "What we updated during submission period" note (App Status = Existing)
+### P7 — Submission assets  `(status: in progress)`
+- [x] Seed demo dataset (VIP-refund scenario) — ingested into **Aurora** (12 entities/10 edges)
+- [x] Architecture diagram → `docs/devpost/architecture.drawio` (open at diagrams.net → Export PNG)
+- [x] Fill `docs/devpost/` text fields: name, elevator pitch, full story, built-with tags, track, database, testing instructions, "what we updated"
+- [ ] AWS / Vercel storage screenshot proving Aurora usage *(needs RDS console / Vercel UI)*
+- [ ] `<3-min` demo video, **public** on YouTube *(script + timing drafted in Project details.md)*
+- [ ] Add live URL + Team ID to `docs/devpost/Additional info.md` *(after Vercel deploy)*
+- [ ] Export diagram → PNG + attach to DevPost; add screenshots to gallery + thumbnail
 - [ ] (Optional bonus) publish content with `#H0Hackathon` (+0.2 each, max +0.6)
 
 ---
