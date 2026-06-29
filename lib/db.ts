@@ -1,5 +1,6 @@
 import { Pool, type PoolConfig, type PoolClient, type QueryResultRow } from "pg";
 import { Signer } from "@aws-sdk/rds-signer";
+import { readFileSync } from "node:fs";
 
 /**
  * Single shared pg Pool for EnterpriseIQ.
@@ -18,9 +19,36 @@ const useIam = process.env.USE_IAM_AUTH === "true";
 
 let pool: Pool | undefined;
 
+// The Vercel Aurora/Marketplace integration may inject the connection string
+// under various names — accept the common ones.
+function connString(): string | undefined {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.DATABASE_URL_UNPOOLED ||
+    undefined
+  );
+}
+
+function isLocal(cs: string): boolean {
+  return /@(localhost|127\.0\.0\.1)[:/]/.test(cs);
+}
+
+// Aurora requires TLS. Use the RDS CA bundle if provided (verified), else fall
+// back to encrypted-but-unverified for remote hosts; no SSL for local dev.
+function sslFor(remote: boolean): PoolConfig["ssl"] {
+  if (!remote) return undefined;
+  if (process.env.RDS_CA_PATH) {
+    return { ca: readFileSync(process.env.RDS_CA_PATH, "utf8") };
+  }
+  return { rejectUnauthorized: process.env.PGSSL_REJECT_UNAUTHORIZED === "true" };
+}
+
 function baseConfig(): PoolConfig {
-  if (process.env.DATABASE_URL && !useIam) {
-    return { connectionString: process.env.DATABASE_URL, max: 5 };
+  if (connString() && !useIam) {
+    const cs = connString()!;
+    return { connectionString: cs, max: 5, ssl: sslFor(!isLocal(cs)) };
   }
 
   // Mode B: IAM auth against Aurora.
@@ -33,7 +61,7 @@ function baseConfig(): PoolConfig {
     port,
     user,
     database: process.env.PGDATABASE ?? "enterpriseiq",
-    ssl: { rejectUnauthorized: true },
+    ssl: sslFor(true),
     max: 5,
     // pg calls this for every new physical connection — perfect place to mint
     // a fresh IAM token so we never cache an expired one.
