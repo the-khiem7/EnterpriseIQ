@@ -16,4 +16,11 @@ Enterprise knowledge is fragmented across emails, Slack, PDFs, CRM, and tribal k
 
 ### Solution
 
-EnterpriseIQ implements a **GraphRAG** architecture using Aurora PostgreSQL with `pgvector` (vector search) and `Apache AGE` (graph database) extensions, deployed on Vercel Edge Functions with a v0-generated Next.js frontend.
+EnterpriseIQ implements a **GraphRAG** architecture on a single Amazon Aurora PostgreSQL engine using `pgvector` (vector search) and `pgrouting` + recursive SQL (knowledge graph over an entities/edges model), deployed on Vercel with a Next.js frontend.
+
+> **Decision update (graph layer):** the original design named `Apache AGE`, but
+> AGE is **not** on the AWS-managed Postgres extension allowlist (Aurora or RDS),
+> so `CREATE EXTENSION age;` is impossible on Aurora. We deliver the knowledge
+> graph natively with `pgrouting` + `WITH RECURSIVE` over an edge-list — same
+> multi-hop capability, single engine, stronger consistency for auditable
+> answers. See `IMPLEMENTATION_PLAN.md` → Decision log.

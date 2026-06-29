@@ -50,7 +50,7 @@ Existing
 
 *Select One. — Appears in project gallery*
 
-Monetizable B2C app
+Open Innovation
 
 ---
 

@@ -1,6 +1,6 @@
 # EnterpriseIQ — AI-Powered Enterprise Knowledge Graph Platform
 
-EnterpriseIQ is a **GraphRAG platform** that turns fragmented enterprise knowledge into a queryable, AI-native knowledge graph — a true **"Company Brain"** for autonomous AI agents. Instead of standard vector RAG that struggles with multi-hop reasoning, EnterpriseIQ combines `pgvector` and `Apache AGE` on Amazon Aurora PostgreSQL to deliver accurate, explainable, auditable answers across siloed company data.
+EnterpriseIQ is a **GraphRAG platform** that turns fragmented enterprise knowledge into a queryable, AI-native knowledge graph — a true **"Company Brain"** for autonomous AI agents. Instead of standard vector RAG that struggles with multi-hop reasoning, EnterpriseIQ unifies `pgvector` and a native SQL knowledge graph (`pgrouting` + recursive SQL) in a **single Amazon Aurora PostgreSQL** engine to deliver accurate, explainable, auditable answers across siloed company data.
 
 Built for the **H0: Hack the Zero Stack** hackathon (Track 4: Open Innovation).
 
@@ -20,7 +20,7 @@ Vector search alone cannot connect entities, traverse relationships, or produce 
 |---|---|---|
 | **Lexical Search** | Exact string matching | Misses context and synonyms |
 | **Standard RAG (Vector Search)** | Semantic similarity via vector distance | No relationship structure, cannot multi-hop reason |
-| **GraphRAG (Knowledge Graph)** | Traverse entity nodes and edges | More complex extraction pipeline, but enables multi-hop reasoning with full audit trails |
+| **GraphRAG (Knowledge Graph)** | Traverse entity nodes and edges (recursive SQL + `pgrouting`) | More complex extraction pipeline, but enables multi-hop reasoning with full audit trails |
 
 ### Regulatory & Compliance Burden
 
@@ -37,7 +37,7 @@ EnterpriseIQ implements a 4-step GraphRAG pipeline:
 ```mermaid
 flowchart LR
   A["Connect<br/>Upload docs via Edge Functions"]
-  B["Structure<br/>Extract NER triples into AGE + pgvector"]
+  B["Structure<br/>Extract NER triples into entities/edges + pgvector"]
   C["Reason<br/>Graph + Vector multi-hop traversal"]
   D["Learn<br/>Feedback loop for retrieval"]
 
@@ -46,7 +46,7 @@ flowchart LR
 
 1. **Connect** — Documents are uploaded via Vercel Edge Functions
 2. **Structure** — LLM extracts entity triples (Subject-Predicate-Object) and embeddings
-3. **Reason** — openCypher traverses graph relationships + pgvector retrieves semantically similar nodes
+3. **Reason** — recursive SQL / `pgrouting` traverses graph relationships + pgvector retrieves semantically similar nodes
 4. **Learn** — User feedback improves future retrieval quality
 
 ## Architecture
@@ -61,7 +61,7 @@ flowchart TD
   end
 
   subgraph Aurora["Amazon Aurora PostgreSQL"]
-    AGE["Apache AGE<br/>Graph model, openCypher<br/>entity graph"]
+    GRAPH["Knowledge Graph<br/>entities + edges tables<br/>pgrouting + recursive SQL"]
     VEC["pgvector<br/>Embeddings store<br/>ANN / KNN search"]
     REL["Relational Tables<br/>documents, users,<br/>audit logs, metadata"]
   end
@@ -75,8 +75,8 @@ flowchart TD
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | **Database** | Aurora PostgreSQL | Unified graph + vector + relational in one engine |
-| **Graph Engine** | Apache AGE | openCypher queries, no separate graph DB to operate |
-| **Vector Search** | pgvector | Embeddings co-located with graph nodes |
+| **Graph Layer** | `pgrouting` + recursive SQL | Real graph algorithms (shortest path, k-hop) over an edge-list — no separate graph DB to operate |
+| **Vector Search** | pgvector | Embeddings co-located with graph in the same engine |
 | **Frontend** | Next.js on Vercel | Edge-deployed, v0-scaffolded |
 | **Auth** | Vercel OIDC → AWS IAM | Passwordless, no static secrets in code |
 | **Deployment** | Vercel Serverless | Auto-scaling, global edge network |
@@ -86,7 +86,7 @@ flowchart TD
 - **Frontend**: Next.js, React, Tailwind CSS (generated via v0.app)
 - **Backend**: Vercel Edge Functions / Serverless Functions
 - **Database**: Amazon Aurora PostgreSQL
-- **Extensions**: `pgvector`, `Apache AGE`
+- **Extensions**: `pgvector`, `pgrouting`
 - **Auth**: Vercel OIDC Federation + AWS IAM (`@aws-sdk/rds-signer`)
 - **Infrastructure**: Vercel, AWS (via Vercel Marketplace integration)
 
@@ -130,7 +130,7 @@ Enable the required extensions:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS age;
+CREATE EXTENSION IF NOT EXISTS pgrouting;
 ```
 
 ## Usage
