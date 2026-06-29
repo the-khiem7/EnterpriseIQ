@@ -9,8 +9,8 @@
 > decision log). **Live status lives here.**
 
 **Last updated:** 2026-06-29
-**Current phase:** P2 — ingest pipeline + Documents UI code-complete; build green; live-DB verification pending
-**Next action:** P3 (Ask/Reason) — or provision DB and verify P1/P2 end-to-end first
+**Current phase:** P1–P5 done & live-verified. P6 deploy **runbook prepared** (`docs/project/DEPLOY.md`).
+**Next action:** execute P6 (needs your AWS/Vercel accounts) — or start P7 assets. Apply Appendix-A code tweaks at deploy time.
 
 ---
 
@@ -29,7 +29,7 @@
 
 ### P0 — Provision & scaffold  `(status: in progress — code done, cloud pending)`
 - [!] Provision **Aurora PostgreSQL Serverless v2** (scale-to-zero) via Vercel Marketplace AWS integration — *manual cloud step, awaiting account*
-- [ ] Enable extensions: `CREATE EXTENSION vector;` `CREATE EXTENSION pgrouting;` — verify versions succeed *(in migration 0001; runs at provision time)*
+- [x] Enable extensions: `vector` + `pgrouting` (+`postgis`, required by pgrouting 3.x) — verified on local Docker PG16; all Aurora-allowlisted
 - [x] Scaffold **Next.js** (App Router, TS, Tailwind v4) — Next 16.2.9 / React 19
 - [x] Wire DB connection via **OIDC → AWS IAM** (`@aws-sdk/rds-signer`) + `DATABASE_URL` local fallback → `lib/db.ts`, `.env.example`
 - [ ] Deploy hello-world to **Vercel**; confirm live `*.vercel.app` URL
@@ -41,7 +41,7 @@
 - [x] `edges_pgr` view (`id, source, target, cost, reverse_cost`) for pgrouting
 - [x] `pg` pooled connection wrapper → `lib/db.ts` (`getPool`, `query`, `withTransaction`)
 - [x] `/api/status` healthcheck (DB connectivity + extensions present) → `app/api/status/route.ts`
-- [ ] **Verify live:** `npm run migrate` against a real DB, then `GET /api/status` returns `hasVector`/`hasPgrouting` true
+- [x] **Verified live:** local Docker PG16 (pgvector+pgrouting+postgis); `npm run migrate` OK; `GET /api/status` → `ok, hasVector, hasPgrouting, coreTables:6`
 
 ### P2 — Ingest: Connect + Structure  `(status: code complete; live verification pending)`
 - [x] `/api/ingest` — PDF (`unpdf`) / markdown / pasted text → `app/api/ingest/route.ts`
@@ -51,33 +51,43 @@
 - [x] Upsert `entities` (`ON CONFLICT`) + insert `edges` → `lib/ingest.ts`
 - [x] **Documents page** — upload (paste/file), list, polling status → `app/documents/page.tsx`
 - [x] `/api/documents` list endpoint
-- [ ] **Verify live:** ingest a doc against a real DB → chunks + entities + edges populated
+- [x] **Verified live:** ingested sample memo → 1 chunk (embedded), 12 entities, 10 edges; `pgr_dijkstra` returned path `Policy v2 → v3 → Michael Tran` (the approver chain)
 
 **Bonus this pass (design foundation):** "Evidence/Blueprint" design system in
 `globals.css` (teal signal + amber provenance, Space Grotesk/Inter/JetBrains Mono);
 app shell + nav (`app/components/app-nav.tsx`); thesis hero (`app/page.tsx`);
 Status page (`app/status/page.tsx`); Ask/Graph placeholders. `npm run build` green.
 
-### P3 — Query: Reason  `(status: not started)`
-- [ ] `/api/query` — embed question → pgvector ANN → seed chunks + entities
-- [ ] `WITH RECURSIVE` k-hop expansion (depth cap + visited-set); `pgr_dijkstra` path for "who/what chain" questions
-- [ ] Assemble context → `gpt-4o` synthesis with chunk + path **citations**
-- [ ] Write `query_logs`
-- [ ] **Ask page** + expandable **Audit Trail** panel (sources + paths + SQL ran)
+### P3 — Query: Reason  `(status: verified live)`
+- [x] `/api/query` — embed question → pgvector ANN seeds → `lib/retrieve.ts`
+- [x] `WITH RECURSIVE` entity-neighbourhood expansion (depth cap 2, dedup) over `edges`
+- [x] Assemble context (chunks + graph facts) → `gpt-4o` synthesis with `[#id]` citations
+- [x] Write `query_logs`
+- [x] **Ask page** + expandable **Audit Trail** panel (graph facts + source chunks) → `app/ask/page.tsx`
+- [x] **Verified live:** demo question → correct multi-hop answer citing `[#1]`, 10 graph facts, 2.3s. `npm run build` green (10 routes).
 
-### P4 — Graph Explorer  `(status: not started)`
-- [ ] `/api/graph` — read `entities` / `edges`
-- [ ] `react-force-graph` viz; click node → connected docs
+> Note: sample corpus is a single doc, so multi-hop is within one chunk's extraction.
+> Seed several linked docs in P7 to showcase **cross-document** multi-hop.
 
-### P5 — Learn: feedback  `(status: not started)`
-- [ ] `/api/feedback` — 👍/👎 + optional note → `feedback`
-- [ ] Adjust `chunks.feedback_score`; factor into ranking (`distance − w·feedback_score`)
+### P4 — Graph Explorer  `(status: code complete; API verified)`
+- [x] `/api/graph` — entities + edges as nodes/links (degree-ranked, capped) → verified live (61 nodes / 68 links)
+- [x] `react-force-graph-2d` viz (dynamic, ssr:false); type-coloured nodes, hover predicates, click → relationship drawer → `app/graph/page.tsx`
+- [ ] Visual confirmation in browser at `/graph` (canvas can't be screenshotted from here)
 
-### P6 — Harden & deploy  `(status: not started)`
-- [ ] IAM auth working in production
-- [ ] Error / empty states across pages
-- [ ] Cold-start warm path for the live demo
-- [ ] Env/config review; no static secrets in code
+### P5 — Learn: feedback  `(status: verified live)`
+- [x] `/api/feedback` — 👍/👎 (+note) → `feedback`; bumps `chunks.feedback_score` for the answer's chunks → `app/api/feedback/route.ts`
+- [x] Ranking already factors `feedback_score` in `lib/retrieve.ts` (`distance − 0.05·feedback_score`)
+- [x] 👍/👎 wired into Ask page answer card
+- [x] **Verified live:** query #3 + 👍 → feedback row inserted, chunks 1–3 `feedback_score` → 1. Build green.
+
+### P6 — Harden & deploy  `(status: runbook ready; execution needs AWS/Vercel)`
+- [x] **Deploy runbook** → `docs/project/DEPLOY.md` (Aurora provision, OIDC→IAM 3 tiers, SSL/CA, env map, verify) + `vercel.json` (region `iad1`)
+- [ ] Provision Aurora + run migrations against it (`npm run migrate`)
+- [ ] Pick auth tier (A: OIDC→IAM ⭐ / B: IAM keys / C: password) + apply Appendix-A `lib/db.ts` tweaks
+- [ ] Deploy to Vercel; `GET /api/status` green on live URL
+- [ ] Ingest/Ask/Graph smoke test on production
+- [ ] Error / empty states across pages (partly done; review)
+- [ ] Capture Team ID + storage screenshot → `docs/devpost/`
 
 ### P7 — Submission assets  `(status: not started)`
 - [ ] Seed demo dataset (the VIP-refund-policy scenario)
@@ -117,6 +127,11 @@ Status page (`app/status/page.tsx`); Ask/Graph placeholders. `npm run build` gre
   `docker run` Postgres w/ pgvector+pgrouting, set `DATABASE_URL`, `npm run migrate`.
 - **Aurora SSL:** `lib/db.ts` uses `rejectUnauthorized: true`. Aurora may need the
   RDS CA bundle (`NODE_EXTRA_CA_CERTS`) or this relaxed; revisit at provision time.
+- **pgrouting needs postgis** (3.x packaging). Migration 0001 now installs postgis
+  first. Both Aurora-allowlisted, so production-valid — just heavier than expected.
+- **Local dev DB:** `docker compose up -d` → Postgres 16 on host port **5433**
+  (5432 was taken). `.env.local` has the matching `DATABASE_URL`.
+- **P2 ingest needs `OPENAI_API_KEY`** in `.env.local` — currently empty.
 
 > Standing flags (see `IMPLEMENTATION_PLAN.md` → Open flags): Vietnam eligibility
 > needs an eligible Representative for prizes; form hashtag typo `#H10Hackathon`
@@ -131,3 +146,9 @@ Status page (`app/status/page.tsx`); Ask/Graph placeholders. `npm run build` gre
 | 2026-06-29 | — | Locked architecture (Option C: Aurora + pgvector + pgrouting). Updated plan/README. Created this tracker. | Start P0 |
 | 2026-06-29 | P0/P1 | Scaffolded Next.js 16 + React 19 + Tailwind v4. Built DB layer: `lib/db.ts` (IAM + local auth), schema migration `0001_init.sql`, `scripts/migrate.mjs`, `/api/status`. Installed pg, rds-signer, openai, zod. `tsc --noEmit` passes. | Provision DB + verify, or continue to P2 ingest |
 | 2026-06-29 | P2 | Ingest pipeline (`lib/{chunk,openai,triples,ingest}.ts`, `/api/ingest`, `/api/documents`) using `unpdf`. Design system + nav + hero + Documents/Status pages + Ask/Graph placeholders. Fixed stray parent-dir npm install. `npm run build` green (9 routes). | P3 Ask/Reason, or provision DB to verify |
+| 2026-06-29 | verify | Local Docker DB (PG16 + pgvector + pgrouting + postgis) on port 5433. `docker/Dockerfile.postgres`, `docker-compose.yml`, `.env.local`, env-loader in `scripts/migrate.mjs`. Migrations applied; schema verified; `/api/status` all-green. | Add OPENAI_API_KEY → verify P2 ingest |
+| 2026-06-29 | P2 verify | Ingested VIP-refund memo via `/api/ingest` (OpenAI live): 1 chunk embedded, 12 entities, 10 edges, clean triples. `pgr_dijkstra` over `edges_pgr` returned `v2 → v3 → Michael Tran`. Both retrieval methods validated. | Build P3 Ask/Reason |
+| 2026-06-29 | P3 | Built + verified live hybrid retrieval: `lib/retrieve.ts` (pgvector seeds + `WITH RECURSIVE` subgraph), `/api/query`, Ask page with Audit Trail. Fixed missing `RECURSIVE` keyword. Demo question answered correctly with citations. Build green. | P4 Graph Explorer |
+| 2026-06-29 | P4 | Graph Explorer: `/api/graph` (degree-ranked nodes/links) + `react-force-graph-2d` page (type-coloured, relationship drawer). API verified (61 nodes/68 links — a 2nd doc was ingested via UI). Build green (11 routes). | P5 Learn (feedback) |
+| 2026-06-29 | P5 | `/api/feedback` + 👍/👎 on Ask page; folds into `feedback_score` ranking. Verified live (feedback row + score bump). Build green (12 routes). Full Connect→Structure→Reason→Learn loop complete. | P6 deploy (needs AWS/Vercel) |
+| 2026-06-29 | P6 prep | Wrote deploy runbook `docs/project/DEPLOY.md` (Aurora provision, 3 auth tiers incl. OIDC→IAM, SSL/CA, env map, verify steps, Appendix-A code diff) + `vercel.json`. Execution pending user's AWS/Vercel accounts. | Execute P6 or start P7 assets |

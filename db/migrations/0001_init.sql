@@ -2,7 +2,9 @@
 -- One Aurora PostgreSQL engine: relational + pgvector + pgrouting/recursive graph.
 
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pgrouting;   -- pulls in postgis-free pgRouting core
+-- pgRouting 3.x packaging requires PostGIS; both are Aurora-allowlisted.
+CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pgrouting;
 
 -- ── Documents & chunks ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS documents (

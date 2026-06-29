@@ -1,0 +1,8 @@
+# Local dev Postgres with BOTH pgvector and pgrouting.
+# No stock image ships both, so we add pgrouting on top of the pgvector image
+# (which is FROM postgres:16, so the PGDG apt repo is already configured).
+FROM pgvector/pgvector:pg16
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends postgresql-16-pgrouting \
+  && rm -rf /var/lib/apt/lists/*
