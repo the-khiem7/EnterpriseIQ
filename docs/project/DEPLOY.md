@@ -21,19 +21,86 @@
 
 ## 1. Provision Aurora PostgreSQL
 
-**Preferred — Vercel Marketplace** (auto-tags resources so the submission
-screenshot is trivial):
-- [ ] Vercel dashboard → **Storage** → **Create Database** → AWS → **Aurora PostgreSQL**.
-- [ ] Choose **Serverless v2**, min ACU `0.5` (enable **auto-pause / scale-to-zero**), engine **PostgreSQL 16**.
-- [ ] Note the cluster **endpoint**, **port** (5432), **db name**, master user/password.
+> **Chosen path: AWS CLI** (Option A below). The AWS Console "express"
+> create is too restrictive — it forces `Authentication = IAM only` (not
+> changeable post-creation), which blocks the fast password path. The CLI lets
+> us enable **password + IAM together** and make the cluster publicly reachable.
 
-**Alternative — AWS Console**: RDS → Create database → Aurora (PostgreSQL-Compatible)
-→ Serverless v2 → PG16. Then connect it to Vercel via the Marketplace integration
-or set env vars manually.
+### Option A — AWS CLI (recommended for this project)
 
-> The Marketplace-auto-created AWS account only allows the integrated DB services.
-> For OIDC/IAM role setup (Tier A) you need IAM access — use your **own** AWS
-> account connected to Vercel, or do Tier C first and upgrade to A later.
+Single Aurora PostgreSQL **Serverless v2** cluster + one `db.serverless`
+instance, **publicly accessible**, **password + IAM** auth, region **us-east-2**.
+
+**Decisions (defaults; confirm before running):**
+
+| Setting | Default | Notes |
+|---|---|---|
+| Region | `us-east-2` (Ohio) | switch `vercel.json` region to `cle1` to co-locate |
+| Engine | `aurora-postgresql` 16.x | query for exact latest 16 minor; supports vector/pgrouting/postgis |
+| Capacity | Serverless v2, min **0.5** ACU, max 4 | min `0` = true scale-to-zero (more savings, cold-start risk) |
+| Auth | **password + IAM** (`--enable-iam-database-authentication`) | Tier C now, Tier A later |
+| Network | default VPC, `--publicly-accessible`, SG inbound 5432 | scope SG to your IP, or `0.0.0.0/0` (strong password, temporary) |
+| Names | cluster `enterpriseiq`, instance `enterpriseiq-1`, db `enterpriseiq`, user `postgres` | — |
+
+**Gate (you):** `aws configure` (key/secret, region `us-east-2`) → `aws sts get-caller-identity`.
+
+**Phase 1 — network + security group**
+```bash
+aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query 'Vpcs[0].VpcId'
+aws ec2 create-security-group --group-name enterpriseiq-db-sg \
+  --description "EnterpriseIQ Aurora" --vpc-id <vpc>
+aws ec2 authorize-security-group-ingress --group-id <sg> \
+  --protocol tcp --port 5432 --cidr <your-ip>/32   # or 0.0.0.0/0 (temporary)
+# create a DB subnet group from the default VPC subnets if none exists
+```
+
+**Phase 2 — pick version + create cluster**
+```bash
+aws rds describe-db-engine-versions --engine aurora-postgresql \
+  --query 'DBEngineVersions[?starts_with(EngineVersion,`16`)].EngineVersion'
+aws rds create-db-cluster \
+  --db-cluster-identifier enterpriseiq --engine aurora-postgresql --engine-version 16.x \
+  --master-username postgres --master-user-password <generated> \
+  --database-name enterpriseiq \
+  --serverless-v2-scaling-configuration MinCapacity=0.5,MaxCapacity=4 \
+  --enable-iam-database-authentication \
+  --vpc-security-group-ids <sg> --db-subnet-group-name <group> --region us-east-2
+```
+
+**Phase 3 — add serverless instance + wait**
+```bash
+aws rds create-db-instance --db-instance-identifier enterpriseiq-1 \
+  --db-cluster-identifier enterpriseiq --engine aurora-postgresql \
+  --db-instance-class db.serverless --publicly-accessible --region us-east-2
+aws rds wait db-instance-available --db-instance-identifier enterpriseiq-1   # ~3–8 min
+```
+
+**Phase 4 — endpoint → migrate**
+```bash
+aws rds describe-db-clusters --db-cluster-identifier enterpriseiq \
+  --query 'DBClusters[0].Endpoint' --output text
+# DATABASE_URL=postgres://postgres:<pw>@<endpoint>:5432/enterpriseiq?sslmode=require  (.env.local)
+npm run migrate     # creates vector/postgis/pgrouting + schema
+```
+
+**Teardown (after the hackathon — stops billing):**
+```bash
+aws rds delete-db-instance --db-instance-identifier enterpriseiq-1 --skip-final-snapshot
+aws rds delete-db-cluster  --db-cluster-identifier enterpriseiq    --skip-final-snapshot
+```
+
+### Option B — Vercel Marketplace
+Vercel → **Storage** → **Create Database** → AWS → **Aurora PostgreSQL**,
+Serverless v2, PG16. Auto-tags resources (easy screenshot) and injects DB env
+vars into the project. Less control over auth/networking than the CLI.
+
+### Option C — AWS Console (full "Create", not express)
+RDS → Create → Aurora (PostgreSQL-Compatible) → Serverless v2 → PG16, set
+**Authentication = "Password and IAM"**, **Public access = Yes**, initial DB
+`enterpriseiq`. (The *express* dialog forces IAM-only — avoid it.)
+
+> The Marketplace-auto-created AWS account is limited-scope (DB services only).
+> For OIDC/IAM role setup (Tier A) use your **own** AWS account.
 
 ---
 

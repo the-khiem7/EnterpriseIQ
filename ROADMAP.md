@@ -9,8 +9,8 @@
 > decision log). **Live status lives here.**
 
 **Last updated:** 2026-06-29
-**Current phase:** P1–P5 done & live-verified. P6 deploy **runbook prepared** (`docs/project/DEPLOY.md`).
-**Next action:** execute P6 (needs your AWS/Vercel accounts) — or start P7 assets. Apply Appendix-A code tweaks at deploy time.
+**Current phase:** P6 — **Aurora live + migrated + IAM auth validated.** Remaining: Vercel deploy (user import).
+**Next action:** user imports repo to Vercel + sets env (below) + deploys → I verify `/api/status` on live URL.
 
 ---
 
@@ -80,14 +80,21 @@ Status page (`app/status/page.tsx`); Ask/Graph placeholders. `npm run build` gre
 - [x] 👍/👎 wired into Ask page answer card
 - [x] **Verified live:** query #3 + 👍 → feedback row inserted, chunks 1–3 `feedback_score` → 1. Build green.
 
-### P6 — Harden & deploy  `(status: runbook ready; execution needs AWS/Vercel)`
-- [x] **Deploy runbook** → `docs/project/DEPLOY.md` (Aurora provision, OIDC→IAM 3 tiers, SSL/CA, env map, verify) + `vercel.json` (region `iad1`)
-- [ ] Provision Aurora + run migrations against it (`npm run migrate`)
-- [ ] Pick auth tier (A: OIDC→IAM ⭐ / B: IAM keys / C: password) + apply Appendix-A `lib/db.ts` tweaks
-- [ ] Deploy to Vercel; `GET /api/status` green on live URL
-- [ ] Ingest/Ask/Graph smoke test on production
-- [ ] Error / empty states across pages (partly done; review)
+### P6 — Harden & deploy  `(status: in progress)`
+- [x] **Deploy runbook** → `docs/project/DEPLOY.md` (3 provision options, OIDC→IAM 3 tiers, SSL/CA, env map, verify) + `vercel.json`
+- [x] **Code deploy-ready & pushed** to GitHub `main`: env-var tolerance + remote SSL in `lib/db.ts`; guarded `/api/admin/migrate`; `next.config` file tracing
+- [x] **Provisioned via AWS CLI** (free-plan → `--with-express-configuration`, so **IAM-only** auth): cluster `enterpriseiq` (Aurora PG **17.7**, Serverless v2 0–4 ACU), instance `enterpriseiq-instance-1`, public. Endpoint `enterpriseiq.cluster-ctqkaawasuw5.us-east-2.rds.amazonaws.com`, resource id `cluster-LYNFXCQO2QOQFOERMGUJKTWFGA`.
+- [x] **Migrated on Aurora**: created `enterpriseiq` DB + ran `0001` via IAM token (psql in the local container). vector/postgis/pgrouting + 6 tables verified.
+- [x] **Auth = Tier B (IAM keys)**: scoped IAM user `enterpriseiq-vercel` (only `rds-db:connect` on dbuser `postgres`); end-to-end connect validated.
+- [x] `vercel.json` region → `cle1` (co-located with us-east-2)
+- [ ] **Vercel (user):** import `the-khiem7/EnterpriseIQ` → set env (see "Vercel env" block below) → deploy
+- [ ] I verify `GET /api/status` green on live URL; Ingest/Ask/Graph smoke test
 - [ ] Capture Team ID + storage screenshot → `docs/devpost/`
+- [ ] (Optional) Upgrade to Tier A OIDC (drop static keys) for the demo
+
+> **Unused free resources to delete later:** SG `sg-04855c07ab3341731`, subnet group
+> `enterpriseiq-subnets` (express manages its own networking — these are orphaned, free).
+> Teardown: `aws rds delete-db-instance --db-instance-identifier enterpriseiq-instance-1 --skip-final-snapshot` then `aws rds delete-db-cluster --db-cluster-identifier enterpriseiq --skip-final-snapshot`.
 
 ### P7 — Submission assets  `(status: not started)`
 - [ ] Seed demo dataset (the VIP-refund-policy scenario)
@@ -131,7 +138,13 @@ Status page (`app/status/page.tsx`); Ask/Graph placeholders. `npm run build` gre
   first. Both Aurora-allowlisted, so production-valid — just heavier than expected.
 - **Local dev DB:** `docker compose up -d` → Postgres 16 on host port **5433**
   (5432 was taken). `.env.local` has the matching `DATABASE_URL`.
-- **P2 ingest needs `OPENAI_API_KEY`** in `.env.local` — currently empty.
+- **P2 ingest needs `OPENAI_API_KEY`** in `.env.local` — (added by user during P2 verify).
+- **[!] AWS CLI not authenticated** — `aws sts get-caller-identity` → NoCredentials.
+  Provisioning (DEPLOY.md Option A) is gated on `aws configure` (region us-east-2).
+- **AWS Console "express" create forces IAM-only auth** (not modifiable) → avoid;
+  use AWS CLI (password+IAM) or full Console "Create".
+- **MIGRATE_SECRET** (for `/api/admin/migrate` on Vercel) generated:
+  `cff33fca05c84f1f9c51b79ee9978e4f51ac054f7f67458c883f8e243ab22d06`.
 
 > Standing flags (see `IMPLEMENTATION_PLAN.md` → Open flags): Vietnam eligibility
 > needs an eligible Representative for prizes; form hashtag typo `#H10Hackathon`
@@ -152,3 +165,4 @@ Status page (`app/status/page.tsx`); Ask/Graph placeholders. `npm run build` gre
 | 2026-06-29 | P4 | Graph Explorer: `/api/graph` (degree-ranked nodes/links) + `react-force-graph-2d` page (type-coloured, relationship drawer). API verified (61 nodes/68 links — a 2nd doc was ingested via UI). Build green (11 routes). | P5 Learn (feedback) |
 | 2026-06-29 | P5 | `/api/feedback` + 👍/👎 on Ask page; folds into `feedback_score` ranking. Verified live (feedback row + score bump). Build green (12 routes). Full Connect→Structure→Reason→Learn loop complete. | P6 deploy (needs AWS/Vercel) |
 | 2026-06-29 | P6 prep | Wrote deploy runbook `docs/project/DEPLOY.md` (Aurora provision, 3 auth tiers incl. OIDC→IAM, SSL/CA, env map, verify steps, Appendix-A code diff) + `vercel.json`. Execution pending user's AWS/Vercel accounts. | Execute P6 or start P7 assets |
+| 2026-06-29 | P6 deploy | Committed+pushed all work to GitHub `main` (2 commits). Added env-var tolerance + remote SSL (`lib/db.ts`), guarded `/api/admin/migrate`, `next.config` tracing. Chose AWS CLI provisioning (DEPLOY.md Option A updated with full command plan + teardown). | User `aws configure` + decisions → run CLI provisioning |
